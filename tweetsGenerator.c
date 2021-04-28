@@ -26,6 +26,8 @@ typedef struct WordStruct {
 typedef struct WordProbability {
   struct WordStruct *word_struct_ptr;
   int num_of_occurences;
+  struct WordProbability *next;
+//  struct WordProbability *last;
   //... Add your own fields here
 } WordProbability;
 
@@ -52,7 +54,7 @@ int add (LinkList *link_list, WordStruct *data)
   Node *new_node = malloc (sizeof (Node));
   if (new_node == NULL)
     {
-      return 1;
+      exit (1);
     }
   *new_node = (Node) {data, NULL};
 
@@ -121,21 +123,47 @@ int generate_sentence (LinkList *dictionary)
  */
 int add_word_to_probability_list (WordStruct *first_word,
                                   WordStruct *second_word)
+//todo: ask if you can implement the Word_Probability dynamic array as a linked list.
 {
+  if (!first_word || !second_word)
+    {
+      return 1;
+    }
+  if (!first_word->prob_list) //if prob_list is empty, start new one
+    {
+      WordProbability *head_word_prob = malloc (sizeof (WordProbability));
+      if (!head_word_prob)
+        {
+          exit (1);
+        }
+
+      first_word->prob_list = head_word_prob;
+      first_word->prob_list_size = 1;
+      head_word_prob->word_struct_ptr = second_word;
+      head_word_prob->num_of_occurences = 1;
+      head_word_prob->next = NULL;
+//      first_word->prob_list->last = head_word_prob;
+      return 1;
+    }
+
   WordProbability *current = first_word->prob_list;
-  for (size_t i = 0; i < first_word->prob_list_size; i++)
+  // check if the second word is already in the first's prob_list.
+  while (current)
     {
       if (!strcmp (current->word_struct_ptr->word, second_word->word))
         {
           current->num_of_occurences++;
           return 0;
         }
-      current++;
+      current = current->next;
+
     }
+
+  // if not then add the second word into the first's prob_list.
   WordProbability *tmp = realloc (first_word->prob_list,
                                   sizeof (WordProbability)
                                   * (first_word->prob_list_size + 1));
-  if (!tmp) //todo: how to exit the program if its null?
+  if (!tmp)
     {
       free (first_word->prob_list);
       first_word->prob_list = NULL;
@@ -143,12 +171,13 @@ int add_word_to_probability_list (WordStruct *first_word,
     }
   first_word->prob_list = tmp;
   first_word->prob_list_size++;
-  current->word_struct_ptr = second_word;
-  current->num_of_occurences = 1;
-//  if (!strcmp (first_word->word, "is"))
-//    {
-//      printf ("%s\n%d\n",current->word_struct_ptr->word,first_word->prob_list_size);
-//    }
+
+  WordProbability *new_word_prob = malloc (sizeof (WordProbability));
+  new_word_prob->word_struct_ptr = second_word;
+  new_word_prob->num_of_occurences = 1;
+  new_word_prob->next = first_word->prob_list;
+  first_word->prob_list = new_word_prob;
+
   return 1;
 }
 
@@ -178,34 +207,66 @@ WordStruct *is_in_dictionary (char *letters, LinkList *p_list)
 void fill_dictionary (FILE *fp, int words_to_read, LinkList *dictionary)
 {
   char tweet[MAX_SENTENCE_LENGTH];
-  fgets (tweet, MAX_SENTENCE_LENGTH, fp);
-  char *word_letters = strtok (tweet, " ");
-  WordStruct *last_word = NULL;
-  for (size_t i = 0; i < words_to_read; i++)
+  char *cur_letters = "";
+  size_t counter = 0;
+  WordStruct *pre_word = NULL;
+  WordStruct *cur_word = NULL;
+  int got_new_line = 0;
+
+  while (fgets (tweet, MAX_SENTENCE_LENGTH, fp))
     {
-      WordStruct *word = is_in_dictionary (word_letters, dictionary); //gets a pointer to the already existing word in dictionary, null otherwise.
-      if (word)
+      got_new_line = 1;
+      while (1)
         {
-          add_word_to_probability_list (last_word, word);
-          last_word = word;
-          word_letters = strtok (NULL, " ");
-          continue;
+          pre_word = cur_word;
+          if (got_new_line)
+            {
+              cur_letters = strtok (tweet, " \n");
+              got_new_line = 0;
+            }
+          else
+            {
+              cur_letters = strtok (NULL, " \n");
+            }
+          //checking if got to end of line:
+          if (!cur_letters)
+            {
+              break;
+            }
+
+          //checking if the word is already on the dictionary:
+          cur_word = is_in_dictionary (cur_letters, dictionary);
+          if (cur_word)
+            {
+              add_word_to_probability_list (pre_word, cur_word);
+              continue;
+            }
+
+          //creating new word to add to dictionary:
+          cur_word = malloc (sizeof (WordStruct));
+          //todo: check_malloc (cur_word);
+          LinkList *tmp = realloc (dictionary,
+                                   sizeof (LinkList) * (dictionary->size + 1));
+          //todo: check_realloc(tmp);
+          dictionary = tmp;
+
+          char *word_letters = malloc (MAX_WORD_LENGTH);
+          //todo: check_malloc (word_letters);
+          strcpy (word_letters, cur_letters);
+          cur_word->word = word_letters;
+          cur_word->prob_list = NULL;
+          cur_word->prob_list_size = 0; //todo: needs malloc?
+          add_word_to_probability_list (pre_word, cur_word);
+          add (dictionary, cur_word);
+
+          counter++;
+          if (counter == words_to_read)
+            {
+              return;
+            }
+
         }
-      word = malloc (sizeof (WordStruct)); //todo: global variable in case malloc is failing.
-      WordProbability *word_probability = malloc (0);
 
-      word->word = word_letters;
-      word->prob_list = word_probability; //todo: should point to null if its a final word in a sentence.
-      word->prob_list_size = 0;
-
-      add (dictionary, word);
-      if (last_word)
-        {
-          add_word_to_probability_list (last_word, word);
-        }
-      last_word = word;
-
-      word_letters = strtok (NULL, " ");
     }
 }
 
@@ -216,6 +277,17 @@ void fill_dictionary (FILE *fp, int words_to_read, LinkList *dictionary)
 void free_dictionary (LinkList *dictionary)
 {
 }
+
+//void* print_dictionary (LinkList *dictionary)
+//{
+////  printf ("dictionary size is: %i\n", dictionary->size);
+//  Node *traveller = dictionary->first;
+//  while (traveller)
+//    {
+//      printf (" %s\n", traveller->data->word);
+//      traveller = traveller->next;
+//    }
+//}
 
 /**
  * @param argc
@@ -241,8 +313,6 @@ int main (int argc, char *argv[])
       return EXIT_FAILURE;
     }
 
-
-
 //  srand (argv[1]);
 
   FILE *fp_corpus = fopen (argv[3], "r");
@@ -252,8 +322,16 @@ int main (int argc, char *argv[])
       return EXIT_FAILURE;
     }
 
-  LinkList *dictionary = malloc (sizeof (Node) * words_to_read);
+  LinkList *dictionary = malloc (sizeof (LinkList));
+  if (!dictionary)
+    {
+      exit (1);
+    }
   fill_dictionary (fp_corpus, words_to_read, dictionary);
 
+//  print_dictionary (dictionary);
+
+
+  printf ("success");
   return 0;
 }
