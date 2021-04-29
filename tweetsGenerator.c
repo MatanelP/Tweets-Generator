@@ -16,6 +16,8 @@
 #define MAX_WORD_LENGTH 100
 #define MAX_SENTENCE_LENGTH 1000
 
+int mallocs = 0;
+
 typedef struct WordStruct {
   char *word;
   struct WordProbability *prob_list;
@@ -48,6 +50,7 @@ typedef struct LinkList {
 
 void check_alloc (void *ptr)
 {
+  mallocs++;
   if (!ptr)
     {
       printf ("Allocation failure: Exiting.");
@@ -108,13 +111,13 @@ WordStruct *get_first_random_word (LinkList *dictionary)
     {
       return NULL;
     }
-  int rand_num = get_random_number (dictionary->size);
+  int rand_num = get_random_number (dictionary->size + 1);
   WordStruct *word = NULL;
   Node *traveller = dictionary->first;
-  int counter = 1;
+  int counter = 0;
   while (traveller)
     {
-      if (counter >= rand_num)
+      if (counter == rand_num)
         {
           word = traveller->data;
           if (word->prob_list)
@@ -167,6 +170,10 @@ WordStruct *get_next_random_word (WordStruct *word_struct_ptr)
 int generate_sentence (LinkList *dictionary)
 {
   WordStruct *first_word = get_first_random_word (dictionary);
+  while (!first_word)
+    {
+      first_word = get_first_random_word (dictionary);
+    }
   printf ("%s ", first_word->word);
   WordStruct *next_word = get_next_random_word (first_word);
   int words_counter = 1;
@@ -319,6 +326,7 @@ void fill_dictionary (FILE *fp, int words_to_read, LinkList *dictionary)
           char *word_letters = malloc (MAX_WORD_LENGTH);
           check_alloc (word_letters);
           strcpy (word_letters, cur_letters);
+//          free (cur_letters);
           cur_word->word = word_letters;
           cur_word->prob_list = NULL;
           cur_word->prob_list_size = 0;
@@ -356,6 +364,7 @@ void free_word_struct (WordStruct *word_ptr)
   WordStruct *del = word_ptr;
   free (del->word);
   free_prob_struck (del->prob_list);
+  free (del);
 }
 /**
  * Free the given dictionary and all of it's content from memory.
@@ -447,6 +456,7 @@ int main (int argc, char *argv[])
       generate_sentence (dictionary);
     }
   free_dictionary (dictionary);
+  fclose (fp_corpus);
 //  dictionary = NULL;
 
 //  print_dictionary (dictionary);
