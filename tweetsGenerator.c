@@ -229,6 +229,7 @@ int add_word_to_probability_list (WordStruct *first_word,
     }
 
   // if not then add the second word into the first's prob_list.
+  //todo: do i even need it?
   WordProbability *tmp = realloc (first_word->prob_list,
                                   sizeof (WordProbability)
                                   * (first_word->prob_list_size + 1));
@@ -339,18 +340,48 @@ void fill_dictionary (FILE *fp, int words_to_read, LinkList *dictionary)
     }
 }
 
+void free_prob_struck (struct WordProbability *prob_struck)
+{
+  WordProbability *del = prob_struck;
+  WordProbability *tmp = NULL;
+  while (del)
+    {
+      tmp = del->next;
+      free (del);
+      del = tmp;
+    }
+}
+void free_word_struct (WordStruct *word_ptr)
+{
+  WordStruct *del = word_ptr;
+  free (del->word);
+  free_prob_struck (del->prob_list);
+}
 /**
  * Free the given dictionary and all of it's content from memory.
  * @param dictionary Dictionary to free
  */
 void free_dictionary (LinkList *dictionary)
 {
-
+  Node *del = dictionary->first;
+  Node *tmp = NULL;
+  while (del)
+    {
+      tmp = del->next;
+      free_word_struct (del->data);
+      free (del);
+      del = tmp;
+    }
+  free (dictionary);
 }
 
 void print_dictionary (LinkList *dictionary)
 {
 //  printf ("dictionary size is: %i\n", dictionary->size);
+  if (!dictionary)
+    {
+      return;
+    }
   Node *traveller = dictionary->first;
   int counter = 1;
   while (traveller)
@@ -412,10 +443,11 @@ int main (int argc, char *argv[])
   srand (seed);
   for (int i = 0; i < num_of_tweets; i++)
     {
-      printf ("Tweet %d: ", i+1);
+      printf ("Tweet %d: ", i + 1);
       generate_sentence (dictionary);
     }
   free_dictionary (dictionary);
+//  dictionary = NULL;
 
 //  print_dictionary (dictionary);
 
