@@ -19,6 +19,7 @@
 typedef struct WordStruct {
   char *word;
   struct WordProbability *prob_list;
+  int num_of_occurences;
   int prob_list_size;
   //... Add your own fields here
 } WordStruct;
@@ -81,6 +82,7 @@ int add (LinkList *link_list, WordStruct *data)
  */
 int get_random_number (int max_number)
 {
+  return rand () % max_number;
 }
 
 /**
@@ -91,6 +93,28 @@ int get_random_number (int max_number)
  */
 WordStruct *get_first_random_word (LinkList *dictionary)
 {
+  if (!dictionary)
+    {
+      return NULL;
+    }
+  int rand_num = get_random_number (dictionary->size);
+  WordStruct *word = NULL;
+  Node *traveller = dictionary->first;
+  int counter = 1;
+  while (traveller)
+    {
+      if (counter >= rand_num)
+        {
+          word = traveller->data;
+          if (word->prob_list)
+            {
+              return word;
+            }
+        }
+      traveller = traveller->next;
+      counter++;
+    }
+  return NULL;
 }
 
 /**
@@ -101,6 +125,32 @@ WordStruct *get_first_random_word (LinkList *dictionary)
  */
 WordStruct *get_next_random_word (WordStruct *word_struct_ptr)
 {
+//  WordStruct * arr = malloc (sizeof (WordStruct)*word_struct_ptr->num_of_occurences);
+//  //todo: check_malloc(arr);
+//  for (int i = 0; i < word_struct_ptr->num_of_occurences; i++)
+//    {
+//    arr[i] = word_struct_ptr->prob_list.
+//    }
+  int rand_num = get_random_number (word_struct_ptr->num_of_occurences);
+  int counter = 0;
+  int revise = 0;
+  WordProbability *traveller = word_struct_ptr->prob_list;
+  while (traveller)
+    {
+      if (counter == rand_num)
+        {
+          return traveller->word_struct_ptr;
+        }
+      if (traveller->num_of_occurences - revise > 1)
+        {
+          counter++;
+          revise++;
+          continue;
+        }
+      revise = 0;
+      traveller = traveller->next;
+      counter++;
+    }
 }
 
 /**
@@ -111,6 +161,19 @@ WordStruct *get_next_random_word (WordStruct *word_struct_ptr)
  */
 int generate_sentence (LinkList *dictionary)
 {
+  WordStruct *first_word = get_first_random_word (dictionary);
+  printf ("%s ", first_word->word);
+  WordStruct *next_word = get_next_random_word (first_word);
+  int words_counter = 1;
+  while (next_word->prob_list
+         && words_counter < MAX_WORDS_IN_SENTENCE_GENERATION)
+    {
+      printf ("%s ", next_word->word);
+      words_counter++;
+      next_word = get_next_random_word (next_word);
+    }
+  printf ("%s\n", next_word->word);
+  return words_counter;
 }
 
 /**
@@ -238,25 +301,29 @@ void fill_dictionary (FILE *fp, int words_to_read, LinkList *dictionary)
           cur_word = is_in_dictionary (cur_letters, dictionary);
           if (cur_word)
             {
-              add_word_to_probability_list (pre_word, cur_word);
+              if (pre_word
+                  && pre_word->word[strlen (pre_word->word) - 1] != '.')
+                {
+                  add_word_to_probability_list (pre_word, cur_word);
+                }
+              cur_word->num_of_occurences++;
               continue;
             }
 
           //creating new word to add to dictionary:
           cur_word = malloc (sizeof (WordStruct));
           //todo: check_malloc (cur_word);
-          LinkList *tmp = realloc (dictionary,
-                                   sizeof (LinkList) * (dictionary->size + 1));
-          //todo: check_realloc(tmp);
-          dictionary = tmp;
-
           char *word_letters = malloc (MAX_WORD_LENGTH);
           //todo: check_malloc (word_letters);
           strcpy (word_letters, cur_letters);
           cur_word->word = word_letters;
           cur_word->prob_list = NULL;
           cur_word->prob_list_size = 0; //todo: needs malloc?
-          add_word_to_probability_list (pre_word, cur_word);
+          cur_word->num_of_occurences = 1;
+          if (pre_word && pre_word->word[strlen (pre_word->word) - 1] != '.')
+            {
+              add_word_to_probability_list (pre_word, cur_word);
+            }
           add (dictionary, cur_word);
 
           counter++;
@@ -278,16 +345,27 @@ void free_dictionary (LinkList *dictionary)
 {
 }
 
-//void* print_dictionary (LinkList *dictionary)
-//{
-////  printf ("dictionary size is: %i\n", dictionary->size);
-//  Node *traveller = dictionary->first;
-//  while (traveller)
-//    {
-//      printf (" %s\n", traveller->data->word);
-//      traveller = traveller->next;
-//    }
-//}
+void print_dictionary (LinkList *dictionary)
+{
+//  printf ("dictionary size is: %i\n", dictionary->size);
+  Node *traveller = dictionary->first;
+  int counter = 1;
+  while (traveller)
+    {
+      printf ("%d) word: %s - %d\n\tprob list - %d: \t", counter, traveller->data->word, traveller->data->num_of_occurences, traveller->data->prob_list_size);
+      WordProbability *prob = traveller->data->prob_list;
+      int prob_counter = 1;
+      while (prob)
+        {
+          printf ("(%d)\t %s - %d\t", prob_counter, prob->word_struct_ptr->word, prob->num_of_occurences);
+          prob = prob->next;
+          prob_counter++;
+        }
+      printf ("\n");
+      traveller = traveller->next;
+      counter++;
+    }
+}
 
 /**
  * @param argc
@@ -299,6 +377,8 @@ void free_dictionary (LinkList *dictionary)
 int main (int argc, char *argv[])
 {
   int words_to_read = 0;
+  unsigned int seed = 0;
+  int num_of_tweets = 0;
   if (argc == 4)
     {
       words_to_read = -1;
@@ -312,9 +392,8 @@ int main (int argc, char *argv[])
       printf ("Usage: <seed>,<number of sentences>,<file>,<optional - number of words>\n");
       return EXIT_FAILURE;
     }
-
-//  srand (argv[1]);
-
+  seed = (unsigned int) strtol (argv[1], NULL, 10);
+  num_of_tweets = (int) strtol (argv[2], NULL, 10);
   FILE *fp_corpus = fopen (argv[3], "r");
   if (fp_corpus == NULL)  // check success of opening file
     {
@@ -323,15 +402,17 @@ int main (int argc, char *argv[])
     }
 
   LinkList *dictionary = malloc (sizeof (LinkList));
-  if (!dictionary)
-    {
-      exit (1);
-    }
+// todo: check_malloc(dictionary);
+
   fill_dictionary (fp_corpus, words_to_read, dictionary);
+//
+  srand (seed);
+  for (int i = 0; i < num_of_tweets; i++)
+    {
+      generate_sentence (dictionary);
+    }
 
 //  print_dictionary (dictionary);
 
-
-  printf ("success");
   return 0;
 }
