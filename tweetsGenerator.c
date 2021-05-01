@@ -16,8 +16,10 @@
 #define MAX_WORD_LENGTH 100
 #define MAX_SENTENCE_LENGTH 1000
 
-int mallocs = 0;
-
+#define ERR_MSG_USAGE "Usage: <seed>,<number of sentences>,<file>,<optional - number of words>\n"
+#define ERR_MSG_BAD_FILE "Error: Invalid file.\n"
+#define ARG_NUM_NO_LIMIT 4
+#define ARG_NUM_WITH_LIMIT 5
 typedef struct WordStruct {
   char *word;
   struct WordProbability *prob_list;
@@ -50,7 +52,6 @@ typedef struct LinkList {
 
 void check_alloc (void *ptr)
 {
-  mallocs++;
   if (!ptr)
     {
       printf ("Allocation failure: Exiting.");
@@ -159,6 +160,7 @@ WordStruct *get_next_random_word (WordStruct *word_struct_ptr)
       traveller = traveller->next;
       counter++;
     }
+  return NULL;
 }
 
 /**
@@ -419,20 +421,20 @@ void print_dictionary (LinkList *dictionary)
  */
 int main (int argc, char *argv[])
 {
-  int words_to_read = 0;
   unsigned int seed = 0;
   int num_of_tweets = 0;
-  if (argc == 4)
+  int words_to_read = 0;
+  if (argc == ARG_NUM_NO_LIMIT)
     {
       words_to_read = -1;
     }
-  else if (argc == 5)
+  else if (argc == ARG_NUM_WITH_LIMIT)
     {
       words_to_read = (int) strtol (argv[4], NULL, 10);
     }
   else
     {
-      printf ("Usage: <seed>,<number of sentences>,<file>,<optional - number of words>\n");
+      printf (ERR_MSG_USAGE);
       return EXIT_FAILURE;
     }
   seed = (unsigned int) strtol (argv[1], NULL, 10);
@@ -440,7 +442,7 @@ int main (int argc, char *argv[])
   FILE *fp_corpus = fopen (argv[3], "r");
   if (fp_corpus == NULL)  // check success of opening file
     {
-      printf ("Error: Invalid file.\n");
+      printf (ERR_MSG_BAD_FILE);
       return EXIT_FAILURE;
     }
 
@@ -457,9 +459,9 @@ int main (int argc, char *argv[])
     }
   free_dictionary (dictionary);
   fclose (fp_corpus);
-//  dictionary = NULL;
 
 //  print_dictionary (dictionary);
+  dictionary = NULL;
 
   return 0;
 }
