@@ -209,7 +209,6 @@ int generate_sentence (LinkList *dictionary)
  */
 int add_word_to_probability_list (WordStruct *first_word,
                                   WordStruct *second_word)
-//todo: ask if you can implement the Word_Probability dynamic array as a linked list.
 {
   if (!first_word || !second_word)
     {
