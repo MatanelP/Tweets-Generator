@@ -20,6 +20,7 @@
 #define ERR_MSG_BAD_FILE "Error: Invalid file.\n"
 #define ARG_NUM_NO_LIMIT 4
 #define ARG_NUM_WITH_LIMIT 5
+#define BASE_TEN 10
 typedef struct WordStruct {
   char *word;
   struct WordProbability *prob_list;
@@ -259,7 +260,7 @@ int add_word_to_probability_list (WordStruct *first_word,
 WordStruct *is_in_dictionary (char *letters, LinkList *p_list)
 {
   Node *p = p_list->first;
-  for (size_t i = 0; i < p_list->size; i++)
+  for (int i = 0; i < p_list->size; i++)
     {
       if (!strcmp (p->data->word, letters))
         {
@@ -283,7 +284,7 @@ void fill_dictionary (FILE *fp, int words_to_read, LinkList *dictionary)
 {
   char tweet[MAX_SENTENCE_LENGTH];
   char *cur_letters = "";
-  size_t counter = 0;
+  int counter = 0;
   WordStruct *pre_word = NULL;
   WordStruct *cur_word = NULL;
   int got_new_line = 0;
@@ -386,31 +387,6 @@ void free_dictionary (LinkList *dictionary)
   free (dictionary);
 }
 
-void print_dictionary (LinkList *dictionary)
-{
-//  printf ("dictionary size is: %i\n", dictionary->size);
-  if (!dictionary)
-    {
-      return;
-    }
-  Node *traveller = dictionary->first;
-  int counter = 1;
-  while (traveller)
-    {
-      printf ("%d) word: %s - %d\n\tprob list - %d: \t", counter, traveller->data->word, traveller->data->num_of_occurences, traveller->data->prob_list_size);
-      WordProbability *prob = traveller->data->prob_list;
-      int prob_counter = 1;
-      while (prob)
-        {
-          printf ("(%d)\t %s - %d\t", prob_counter, prob->word_struct_ptr->word, prob->num_of_occurences);
-          prob = prob->next;
-          prob_counter++;
-        }
-      printf ("\n");
-      traveller = traveller->next;
-      counter++;
-    }
-}
 
 /**
  * @param argc
@@ -430,15 +406,15 @@ int main (int argc, char *argv[])
     }
   else if (argc == ARG_NUM_WITH_LIMIT)
     {
-      words_to_read = (int) strtol (argv[4], NULL, 10);
+      words_to_read = (int) strtol (argv[4], NULL, BASE_TEN);
     }
   else
     {
       printf (ERR_MSG_USAGE);
       return EXIT_FAILURE;
     }
-  seed = (unsigned int) strtol (argv[1], NULL, 10);
-  num_of_tweets = (int) strtol (argv[2], NULL, 10);
+  seed = (unsigned int) strtol (argv[1], NULL, BASE_TEN);
+  num_of_tweets = (int) strtol (argv[2], NULL, BASE_TEN);
   FILE *fp_corpus = fopen (argv[3], "r");
   if (fp_corpus == NULL)  // check success of opening file
     {
@@ -460,7 +436,6 @@ int main (int argc, char *argv[])
   free_dictionary (dictionary);
   fclose (fp_corpus);
 
-//  print_dictionary (dictionary);
   dictionary = NULL;
 
   return 0;
