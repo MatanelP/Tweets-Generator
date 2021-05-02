@@ -381,6 +381,7 @@ void fill_dictionary (FILE *fp, int words_to_read, LinkList *dictionary)
           if (cur_word)
             {
               update_word (pre_word, cur_word);
+              counter++;
               continue;
             }
           //creating new word to add to dictionary:
