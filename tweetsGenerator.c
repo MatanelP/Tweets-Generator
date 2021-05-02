@@ -372,7 +372,8 @@ void fill_dictionary (FILE *fp, int words_to_read, LinkList *dictionary)
   while ((counter != words_to_read) && fgets (tweet, MAX_SENTENCE_LENGTH, fp))
     {
       got_new_line = 1;
-      while ((cur_letters = get_next_letters (tweet, cur_letters,
+      while ((counter != words_to_read) &&
+             (cur_letters = get_next_letters (tweet, cur_letters,
                                               &got_new_line)))
         {
           pre_word = cur_word;
