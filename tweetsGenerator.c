@@ -1,10 +1,5 @@
 //*********************
-// Exercise  3
-//
 // Name: Matanel Pataki
-//
-// ID: 205951023
-//
 // A program that generates Twitter tweets.
 //*********************
 
